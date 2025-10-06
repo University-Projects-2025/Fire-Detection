@@ -25,6 +25,8 @@ A public dataset containing labeled images with fire, smoke, normal (or no_fire)
 
 The dataset will be divided into training, validation, and test samples.
 
+[EDA](https://github.com/University-Projects-2025/Fire-Detection/blob/main/data/eda.ipynb)
+
 ## Getting Started
 To set up and run the project locally:
 
