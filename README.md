@@ -14,8 +14,7 @@ This project aims to develop an automatic detection system for identifying fire 
 └── data          # Some data for fire/smoke segmentation testing
 |
 └── test.ipynb    # Code for fire/smoke segmentation and intensity measurement
-
-*will be updated soon*
+```
 
 ## Technology Stack
 - Programming Language: Python
