@@ -9,8 +9,11 @@ This project aims to develop an automatic detection system for identifying fire 
 ## Repository Structure
 ```
 |
-└── README.md               # Description of project
-```
+└── README.md     # Description of project
+|
+└── data          # Some data for fire/smoke segmentation testing
+|
+└── test.ipynb    # Code for fire/smoke segmentation and intensity measurement
 
 *will be updated soon*
 
