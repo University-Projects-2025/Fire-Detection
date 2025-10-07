@@ -8,11 +8,12 @@ This project aims to develop an automatic detection system for identifying fire 
 
 ## Repository Structure
 ```
-|
+├── data/                   # Data directory
+│   ├── data_clean.ipynb    # Clean the labels for images
+│   └── eda.ipynb           # Dataset overview
+│
 └── README.md               # Description of project
 ```
-
-*will be updated soon*
 
 ## Technology Stack
 - Programming Language: Python
