@@ -1,0 +1,14 @@
+artifact_uri: file:///c:/Lev/Project_PMLDL/Fire-Detection/mlruns/387687102884861865/84e36a0967f7422295937f6d7ba49f4b/artifacts
+end_time: 1761591065069
+entry_point_name: ''
+experiment_id: '387687102884861865'
+lifecycle_stage: active
+run_id: 84e36a0967f7422295937f6d7ba49f4b
+run_name: resilient-bee-287
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1761591029587
+status: 4
+tags: []
+user_id: LevPe

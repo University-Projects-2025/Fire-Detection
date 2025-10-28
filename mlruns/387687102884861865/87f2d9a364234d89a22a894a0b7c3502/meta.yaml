@@ -1,0 +1,14 @@
+artifact_uri: file:///c:/Lev/Project_PMLDL/Fire-Detection/mlruns/387687102884861865/87f2d9a364234d89a22a894a0b7c3502/artifacts
+end_time: 1761590963753
+entry_point_name: ''
+experiment_id: '387687102884861865'
+lifecycle_stage: active
+run_id: 87f2d9a364234d89a22a894a0b7c3502
+run_name: funny-mouse-746
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1761590927632
+status: 4
+tags: []
+user_id: LevPe

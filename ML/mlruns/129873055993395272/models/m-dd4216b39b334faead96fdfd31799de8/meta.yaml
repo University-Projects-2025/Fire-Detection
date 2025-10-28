@@ -1,0 +1,10 @@
+artifact_location: file:///c:/Users/LevPe/OneDrive/%D0%A0%D0%B0%D0%B1%D0%BE%D1%87%D0%B8%D0%B9%20%D1%81%D1%82%D0%BE%D0%BB/Innopolis/3%20course/DML/Project/mlruns/129873055993395272/models/m-dd4216b39b334faead96fdfd31799de8/artifacts
+creation_timestamp: 1761600245310
+experiment_id: '129873055993395272'
+last_updated_timestamp: 1761600263659
+model_id: m-dd4216b39b334faead96fdfd31799de8
+model_type: null
+name: model
+source_run_id: 6b1f6499cf4d42a68f2899eace340300
+status: 2
+status_message: null
