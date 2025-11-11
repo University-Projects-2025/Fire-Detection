@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smoke & Fire Detection</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔥</text></svg>">
+</head>
+<body>
+    <div class="container">
+        <header class="app-header">
+            <div class="header-content">
+                <div class="logo">
+                    <h1>Fire & Smoke Detection</h1>
+                </div>
+            </div>
+        </header>
+
+        <main class="main-content">
+            <section class="upload-section">
+                <div class="upload-controls">
+                    <h2>Image Analysis</h2>
+                    <p class="instruction">Upload an image for smoke and fire detection analysis</p>
+                    
+                    <div class="upload-button-container">
+                        <input type="file" id="imageInput" accept="image/*" hidden>
+                        <button class="upload-btn" id="uploadBtn">
+                            <span class="btn-text">Upload Image</span>
+                        </button>
+                    </div>
+
+                    <section class="model-selection">
+                        <h2>Model Selection</h2>
+                        <div class="model-options">
+                            <label class="model-option">
+                                <input type="radio" name="model" value="rf" checked>
+                                <span class="radio-custom"></span>
+                                <span class="model-label">Random Forest</span>
+                            </label>
+                            <label class="model-option">
+                                <input type="radio" name="model" value="yolo">
+                                <span class="radio-custom"></span>
+                                <span class="model-label">YOLO</span>
+                            </label>
+                        </div>
+                    </section>
+                    
+                    <button class="analyze-btn" id="detectBtn" disabled>
+                        <span class="btn-text">Analyze Image</span>
+                    </button>
+                </div>
+            </section>
+
+            <section class="results-section" id="resultsSection">
+                <div class="results-content">
+                    <h2>Results</h2>
+                    
+                    <!-- Image Comparison Section -->
+                    <div class="image-comparison">
+                        <div class="image-container">
+                            <div class="image-label">Original Image</div>
+                            <div class="image-frame">
+                                <img id="originalImage" alt="Original Image" class="result-image" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='300' viewBox='0 0 400 300'%3E%3Crect width='400' height='300' fill='%23f8f9fa'/%3E%3Ctext x='200' y='150' text-anchor='middle' font-family='Arial' font-size='16' fill='%2395a5a6'%3ENo image uploaded%3C/text%3E%3C/svg%3E">
+                            </div>
+                        </div>
+                        <div class="image-container">
+                            <div class="image-label">Detection Result</div>
+                            <div class="image-frame">
+                                <img id="resultImage" alt="Detection Result" class="result-image" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='300' viewBox='0 0 400 300'%3E%3Crect width='400' height='300' fill='%23f8f9fa'/%3E%3Ctext x='200' y='150' text-anchor='middle' font-family='Arial' font-size='16' fill='%2395a5a6'%3EAwaiting analysis%3C/text%3E%3C/svg%3E">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Prediction Results -->
+                    <div class="results-grid">
+                        <div class="result-item">
+                            <div class="result-label">Detection Status</div>
+                            <div class="prediction-badge" id="predictionBadge">
+                                <span class="status-text">No analysis performed</span>
+                            </div>
+                        </div>
+                        
+                        <div class="result-item" id="intensityItem" style="display: none;">
+                            <div class="result-label">Intensity Level</div>
+                            <div class="intensity-display" id="intensityScore">
+                                <div class="intensity-bar">
+                                    <div class="intensity-fill" id="intensityFill"></div>
+                                </div>
+                                <div class="intensity-value" id="intensityValue"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <div class="loading" id="loading" style="display: none;">
+                <div class="loading-content">
+                    <div class="loading-spinner"></div>
+                    <h3>Analyzing Image</h3>
+                    <p>Processing visual data for smoke and fire detection...</p>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

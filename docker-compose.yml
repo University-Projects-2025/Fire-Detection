@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  backend:
+    build: ./backend
+    ports:
+      - "5001:5000"
+    volumes:
+      - ./backend/models/model_rf_structure:/app/models/model_rf_structure
+    environment:
+      - FLASK_ENV=production
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
