@@ -167,6 +167,10 @@ body {
     color: var(--primary-color);
     margin-bottom: 15px;
     font-size: 1.1em;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
 }
 
 .image-frame {
@@ -196,6 +200,7 @@ body {
     max-width: 400px;
     margin-left: auto;
     margin-right: auto;
+    transition: opacity 0.3s ease;
 }
 
 .result-item {
@@ -496,4 +501,118 @@ body {
     color: var(--primary-color);
     font-weight: 600;
     font-size: 0.95em;
+}
+
+/* ConvNeXt Information Styles */
+.convnext-info {
+    margin-top: 30px;
+    padding: 20px;
+    background: var(--background-color);
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+}
+
+.convnext-stats {
+    text-align: left;
+}
+
+.convnext-label {
+    font-weight: 600;
+    color: var(--primary-color);
+    margin-bottom: 15px;
+    font-size: 1.1em;
+    text-align: center;
+}
+
+.probability-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.probability-item:last-child {
+    border-bottom: none;
+}
+
+.probability-label {
+    color: var(--text-secondary);
+    font-weight: 500;
+    font-size: 0.9em;
+}
+
+.probability-value {
+    color: var(--primary-color);
+    font-weight: 600;
+    font-size: 0.95em;
+}
+
+.detection-status {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 0;
+    margin-top: 10px;
+    border-radius: 6px;
+    padding: 10px 15px;
+}
+
+.detection-status.detected {
+    background: #e74c3c20;
+    border: 1px solid #e74c3c40;
+}
+
+.detection-status.not-detected {
+    background: #27ae6020;
+    border: 1px solid #27ae6040;
+}
+
+.status-label {
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+.status-value {
+    font-weight: 700;
+}
+
+.detection-status.detected .status-value {
+    color: #e74c3c;
+}
+
+.detection-status.not-detected .status-value {
+    color: #27ae60;
+}
+
+.bbox-info {
+    margin-top: 15px;
+    padding: 15px;
+    background: white;
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
+}
+
+.bbox-label {
+    font-weight: 600;
+    color: var(--primary-color);
+    margin-bottom: 8px;
+    font-size: 0.95em;
+}
+
+.bbox-coords {
+    color: var(--text-secondary);
+    font-size: 0.85em;
+    line-height: 1.4;
+}
+
+.file-name {
+    font-size: 0.85em;
+    color: var(--text-secondary);
+    font-weight: normal;
+    font-style: italic;
+    max-width: 300px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }

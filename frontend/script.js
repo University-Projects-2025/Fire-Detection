@@ -4,6 +4,7 @@ class FireWatch {
             ? 'http://localhost:5001/api' 
             : '/api';
         this.selectedModel = 'rf'; // Default model
+        this.selectedFileName = ''; // Store the file name
         this.initializeEventListeners();
     }
 
@@ -59,10 +60,16 @@ class FireWatch {
 
         const detectBtn = document.getElementById('detectBtn');
         const originalImage = document.getElementById('originalImage');
+        const originalImageLabel = document.getElementById('originalImageLabel');
 
         // Enable analyze button
         detectBtn.disabled = false;
         this.selectedFile = file;
+        this.selectedFileName = file.name;
+
+        // Update the original image label with file name
+        const fileNameWithoutExt = file.name.replace(/\.[^/.]+$/, ""); // Remove file extension
+        originalImageLabel.textContent = `Original Image: ${fileNameWithoutExt}`;
 
         // Show uploaded image in the original image frame
         const reader = new FileReader();
@@ -143,7 +150,7 @@ class FireWatch {
                 intensityValue.className = `intensity-value ${result.prediction}`;
                 intensityItem.style.display = 'block';
             } else {
-                // Hide intensity display for YOLO or clear results
+                // Hide intensity display for YOLO, ConvNeXt or clear results
                 intensityItem.style.display = 'none';
             }
         }
@@ -160,9 +167,9 @@ class FireWatch {
             timingElement.id = 'timingInfo';
             timingElement.className = 'timing-info';
             
-            // Add it to the results section
-            const resultsContent = document.querySelector('.results-content');
-            resultsContent.appendChild(timingElement);
+            // Add it to the results section after the results grid
+            const resultsGrid = document.getElementById('resultsGrid');
+            resultsGrid.parentNode.insertBefore(timingElement, resultsGrid.nextSibling);
         }
 
         let timingHTML = `
@@ -189,12 +196,27 @@ class FireWatch {
 
     showLoading(show) {
         const loading = document.getElementById('loading');
+        const resultsGrid = document.getElementById('resultsGrid');
+        const timingInfo = document.getElementById('timingInfo');
+        const convnextInfo = document.getElementById('convnextInfo');
         
-        if (loading) {
+        if (loading && resultsGrid) {
             if (show) {
+                // Show loading, hide results
                 loading.style.display = 'block';
+                resultsGrid.style.display = 'none';
+                
+                // Hide additional info sections during loading
+                if (timingInfo) timingInfo.style.display = 'none';
+                if (convnextInfo) convnextInfo.style.display = 'none';
             } else {
+                // Hide loading, show results
                 loading.style.display = 'none';
+                resultsGrid.style.display = 'grid';
+                
+                // Show additional info sections after loading
+                if (timingInfo) timingInfo.style.display = 'block';
+                if (convnextInfo) convnextInfo.style.display = 'block';
             }
         }
     }

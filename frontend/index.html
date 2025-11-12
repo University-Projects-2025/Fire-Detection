@@ -43,6 +43,11 @@
                                 <span class="radio-custom"></span>
                                 <span class="model-label">YOLO</span>
                             </label>
+                            <label class="model-option">
+                                <input type="radio" name="model" value="convnext">
+                                <span class="radio-custom"></span>
+                                <span class="model-label">ConvNeXt Dual-Head</span>
+                            </label>
                         </div>
                     </section>
                     
@@ -59,7 +64,7 @@
                     <!-- Image Comparison Section -->
                     <div class="image-comparison">
                         <div class="image-container">
-                            <div class="image-label">Original Image</div>
+                            <div class="image-label" id="originalImageLabel">Original Image</div>
                             <div class="image-frame">
                                 <img id="originalImage" alt="Original Image" class="result-image" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='300' viewBox='0 0 400 300'%3E%3Crect width='400' height='300' fill='%23f8f9fa'/%3E%3Ctext x='200' y='150' text-anchor='middle' font-family='Arial' font-size='16' fill='%2395a5a6'%3ENo image uploaded%3C/text%3E%3C/svg%3E">
                             </div>
@@ -72,8 +77,17 @@
                         </div>
                     </div>
 
+                    <!-- Loading State -->
+                    <div class="loading" id="loading" style="display: none;">
+                        <div class="loading-content">
+                            <div class="loading-spinner"></div>
+                            <h3>Analyzing Image</h3>
+                            <p>Processing visual data for smoke and fire detection...</p>
+                        </div>
+                    </div>
+
                     <!-- Prediction Results -->
-                    <div class="results-grid">
+                    <div class="results-grid" id="resultsGrid">
                         <div class="result-item">
                             <div class="result-label">Detection Status</div>
                             <div class="prediction-badge" id="predictionBadge">
@@ -93,14 +107,6 @@
                     </div>
                 </div>
             </section>
-
-            <div class="loading" id="loading" style="display: none;">
-                <div class="loading-content">
-                    <div class="loading-spinner"></div>
-                    <h3>Analyzing Image</h3>
-                    <p>Processing visual data for smoke and fire detection...</p>
-                </div>
-            </div>
         </main>
     </div>
 

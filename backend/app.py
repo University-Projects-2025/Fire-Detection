@@ -18,10 +18,13 @@ os.environ['ULTRALYTICS_UPDATE'] = '0'
 
 # Add model_rf_structure to path
 sys.path.append('models/model_rf_structure')
+sys.path.append('models/convDualHead')
 
+from ultralytics import YOLO
 from model_cv import SmokeDetectionPipeline, SmokeTextureFeatureExtractor
 from segmentation_fire import FireSegmnetation, analyze_single_image
 from segmentation_smoke import SmokeSegmentation, analyze_single_image_smoke
+from model_detector_load import load_trained_model, predict_image
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -36,6 +39,9 @@ MODEL_PATH = "models/model_rf_structure/smoke_fire_3class_model_full_final.pkl"
 
 YOLO_MODEL_PATH = "models/yolo/best.pt"
 yolo_model = None
+
+CONVNEXT_MODEL_PATH = "models/convDualHead/best_dual_head_continued.pt"
+convnext_model = None
 
 # Patch to use weights_only=False for Yolo
 original_torch_load = torch.load
@@ -58,35 +64,45 @@ logger.info("Applied torch.load patch for YOLO model loading")
 def load_yolo_model():
     """Load YOLO model with patched torch.load"""
     global yolo_model
-    
-    from ultralytics import YOLO
-    
     logger.info(f"Loading YOLO model from: {YOLO_MODEL_PATH}")
     yolo_model = YOLO(YOLO_MODEL_PATH)
     if yolo_model:
         return True
     return False
 
+def load_convnext_model():
+    """Load ConvNeXt Dual-Head model"""
+    global convnext_model
+    
+    try:        
+        convnext_model = load_trained_model(CONVNEXT_MODEL_PATH)
+        logger.info("ConvNeXt model loaded successfully")
+        return True
+    except Exception as e:
+        logger.error(f"Error loading ConvNeXt model: {e}")
+        logger.error(f"ConvNeXt traceback: {traceback.format_exc()}")
+        return False
+
 def initialize_models():
     """Initialize all models"""
-    global pipeline, yolo_model
+    global pipeline, yolo_model, convnext_model
     
     # Initialize RF model
-    try:
-        pipeline.load_pipeline(MODEL_PATH)
-        logger.info("Random Forest model loaded successfully")
-    except Exception as e:
-        logger.error(f"Error loading Random Forest model: {e}")
-        return False
+
+    pipeline.load_pipeline(MODEL_PATH)
+    logger.info("Random Forest model loaded successfully")
 
     # Initialize YOLO model
     yolo_success = load_yolo_model()
     
-    if yolo_success:
+    # Initialize ConvNeXt model
+    convnext_success = load_convnext_model()
+    
+    if yolo_success and convnext_success:
         logger.info("All models initialized successfully")
         return True
     else:
-        logger.warning("RF model loaded but YOLO model failed to load")
+        logger.warning("Some models failed to load, but continuing with available models")
         return True
 
 # Initialize models on startup
@@ -130,7 +146,7 @@ def image_to_base64(image):
 
 @app.route('/api/detect', methods=['POST'])
 def detect_smoke_fire():
-    start_time = time.time()  # Start timing the entire request
+    start_time = time.time()
     try:
         data = request.get_json()
         logger.info(f"Received detection request with model type: {data.get('model', 'rf')}")
@@ -146,17 +162,21 @@ def detect_smoke_fire():
         image_bgr = base64_to_image(data['image'])
         logger.info(f"Image converted successfully. Shape: {image_bgr.shape}")
         
+        # Route to appropriate model
         if model_type == 'yolo':
             logger.info("Using YOLO model for detection")
             result = detect_with_yolo(image_bgr)
+        elif model_type == 'convnext':
+            logger.info("Using ConvNeXt model for detection")
+            result = detect_with_convnext(image_bgr)
         else:
             logger.info("Using Random Forest model for detection")
             result = detect_with_rf(image_bgr)
         
         # Add timing information to the response
-        if isinstance(result, tuple):  # If it's a Flask response
+        if isinstance(result, tuple):
             response_data = result[0].get_json() if hasattr(result[0], 'get_json') else result[0]
-            response_data['processing_time'] = round((time.time() - start_time) * 1000, 2)  # Convert to milliseconds
+            response_data['processing_time'] = round((time.time() - start_time) * 1000, 2)
             return jsonify(response_data), result[1] if len(result) > 1 else 200
         else:
             result['processing_time'] = round((time.time() - start_time) * 1000, 2)
@@ -169,7 +189,7 @@ def detect_smoke_fire():
 
 def detect_with_rf(image_bgr):
     """Detection using Random Forest model with intensity analysis"""
-    rf_start_time = time.time()  # Start timing RF model
+    rf_start_time = time.time()
     
     image_rgb = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2RGB)
     image_resized = cv2.resize(image_rgb, (128, 128))
@@ -181,7 +201,7 @@ def detect_with_rf(image_bgr):
         "prediction": class_name,
         "model": "rf",
         "detailed_analysis": {},
-        "model_inference_time": round((time.time() - rf_start_time) * 1000, 2)  # RF model inference time
+        "model_inference_time": round((time.time() - rf_start_time) * 1000, 2)
     }
     
     # Perform detailed analysis based on prediction
@@ -274,7 +294,7 @@ def detect_with_yolo(image_bgr):
                 "overlay_image": overlay_b64,
                 "original_image": image_to_base64(image_bgr),
                 "detection_count": len(boxes) if boxes else 0,
-                "model_inference_time": inference_time  # YOLO model inference time
+                "model_inference_time": inference_time
             }
             
             return result_data
@@ -293,6 +313,101 @@ def detect_with_yolo(image_bgr):
         logger.error(error_msg)
         logger.error(f"YOLO traceback: {traceback.format_exc()}")
         return {"error": error_msg}, 500
+
+def detect_with_convnext(image_bgr):
+    """Detection using ConvNeXt Dual-Head model"""
+    logger.info("Starting ConvNeXt detection...")
+    
+    if convnext_model is None:
+        error_msg = "ConvNeXt model not available"
+        logger.error(error_msg)
+        return {"error": error_msg}, 500
+    
+    try:
+        inference_start = time.time()
+        
+        # Convert OpenCV image to PIL
+        image_rgb = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2RGB)
+        pil_image = Image.fromarray(image_rgb)
+        
+        # Get prediction
+        result = predict_image(convnext_model, pil_image)
+        inference_time = round((time.time() - inference_start) * 1000, 2)
+        
+        # Convert numpy arrays to Python native types for JSON serialization
+        bbox = None
+        if result['detected'] and result['bbox'] is not None:
+            # Convert numpy array to Python list
+            bbox = result['bbox'].tolist() if hasattr(result['bbox'], 'tolist') else result['bbox']
+        
+        # Create visualization
+        overlay_image = create_convnext_visualization(
+            image_bgr, 
+            result['bbox'],
+            result['detected'], 
+            result['class_name'], 
+            result['probabilities']
+        )
+        
+        result_data = {
+            "prediction": result['class_name'],
+            "model": "convnext",
+            "detailed_analysis": {
+                "probabilities": result['probabilities'],
+                "detected": result['detected'],
+                "bounding_box": bbox
+            },
+            "overlay_image": image_to_base64(overlay_image),
+            "original_image": image_to_base64(image_bgr),
+            "model_inference_time": inference_time
+        }
+        
+        return result_data
+        
+    except Exception as e:
+        error_msg = f"ConvNeXt detection error: {str(e)}"
+        logger.error(error_msg)
+        logger.error(f"ConvNeXt traceback: {traceback.format_exc()}")
+        return {"error": error_msg}, 500
+
+def create_convnext_visualization(frame, bbox, detected, prediction, probabilities):
+    """Create visualization for ConvNeXt model results"""
+    display_frame = frame.copy()
+    
+    if detected and bbox is not None and any(coord > 0 for coord in bbox):
+        # Convert normalized coordinates to pixel coordinates
+        img_height, img_width = display_frame.shape[:2]
+        x_center, y_center, width, height = bbox
+        
+        x1 = int((x_center - width/2) * img_width)
+        y1 = int((y_center - height/2) * img_height)
+        x2 = int((x_center + width/2) * img_width)
+        y2 = int((y_center + height/2) * img_height)
+        
+        # Ensure coordinates are within image bounds
+        x1 = max(0, min(x1, img_width))
+        y1 = max(0, min(y1, img_height))
+        x2 = max(0, min(x2, img_width))
+        y2 = max(0, min(y2, img_height))
+        
+        # Choose color based on prediction
+        if prediction == "fire":
+            color = (0, 0, 255)
+        elif prediction == "smoke":
+            color = (255, 0, 0)
+        else:
+            color = (0, 255, 0)
+        
+        # Draw bounding box
+        cv2.rectangle(display_frame, (x1, y1), (x2, y2), color, 3)
+        
+        # Add label
+        confidence = probabilities.get(prediction, 0.5)
+        label = f"{prediction.upper()} ({confidence:.2f})"
+        cv2.putText(display_frame, label, (x1, y1-10), 
+                   cv2.FONT_HERSHEY_SIMPLEX, 0.7, color, 2)
+    
+    return display_frame
 
 def create_intensity_analysis_image(frame, fire_mask):
     """Create fire analysis overlay image"""
