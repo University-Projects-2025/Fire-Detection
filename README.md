@@ -78,10 +78,14 @@ To set up and run the project locally:
 ## Demo
 These are some examples of how models work:
 
+User Interface:
 ![User Interface](assets/front.png)
 
+Results of RF-model
 ![RF-model results](assets/rf.png)
 
+Results of YOLO-model
 ![YOLO results](assets/yolo.png)
 
+Results of ConvNeXt-model
 ![ConvNeXt-model results](assets/convNext.png)
