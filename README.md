@@ -3,42 +3,26 @@
 
 Contributors: Lev Permiakov, Arina Petuhova, Aleliya Turushkina
 
-## Project Overview
-This project aims to develop an automatic detection system for identifying fire and smoke in images using a Deep Learning approach. The core of the system is a Convolutional Neural Network (CNN) model trained to classify images into three distinct categories: Fire, Smoke, and No Threat.
-
 ## Repository Structure
 ```
 |
-└── README.md     # Description of project
+└── data # Some data for fire/smoke segmentation testing
 |
-└── data          # Some data for fire/smoke segmentation testing
+└── segmentation # Experiments on fire/smoke segmentation and intensity measurement
 |
-└── test.ipynb    # Code for fire/smoke segmentation and intensity measurement
+└── training_model # Model related experiments and training 
+|
+└── model_cv.py # Code with model related classes
+|
+└── segmentation_fire.py # Code with fire segmentation and intensity calculation related classes
+|
+└── segmentation_smoke.py # Code with smoke segmentation and intensity calculation related classes
+|
+└── prediction.py # Code for making a prediction on an image
+|
+└── README.md # Description of cv_testing branch
 ```
 
-## Technology Stack
-- Programming Language: Python
-- Deep Learning Framework: PyTorch
-- Libraries for data processing: OpenCV, NumPy, Pandas
-- Visualization: Matplotlib
-
-## Data
-A public dataset containing labeled images with fire, smoke, normal (or no_fire) classes will be used for training and evaluating the model. 
-
-The dataset will be divided into training, validation, and test samples.
-
-## Getting Started
-To set up and run the project locally:
-
-1. Clone the repository:
-    ```
-    git clone https://github.com/University-Projects-2025/Fire-Detection.git
-    ```
-    
-2. Navigate to the project directory:
-    ```
-    cd Fire-Detection
-    ```
-    
-
-*will be updated soon*
+## About Testing
+- Fire and smoke related segmentation and intensity calculations can be found in segmentation/fire_smoke_segmentation.ipynb
+- Model related experiments and training process can be found in training_model/feature_extr_model.ipynb
