@@ -52,6 +52,7 @@ This project develops and compares three distinct models for the automatic detec
 The project utilizes the D-Fire dataset, a comprehensive collection of over 21,000 images designed for fire and smoke detection. The dataset is categorized into images containing only fire (1,164), only smoke (5,867), both fire and smoke (4,658), and no threats (9,838). In total, it provides 14,692 bounding box annotations for fire and 11,865 for smoke. All annotations are provided in the YOLO format with normalized coordinates. 
 
 [D-Fire  Dataset](https://www.kaggle.com/datasets/datascientist97/forest-fire)
+
 [Exploratory Data Analysis](https://github.com/University-Projects-2025/Fire-Detection/blob/main/data/eda.ipynb)
 
 ## Getting Started
@@ -65,7 +66,7 @@ To set up and run the project locally:
 2. Navigate to the project directory:
     ```
     cd Fire-Detection
-    ``
+    ```
 
 3. Build and start all the containers:
     ```
@@ -73,3 +74,14 @@ To set up and run the project locally:
     ```
 
 4. Go to the [http://localhost:8080](http://localhost:8080) to test the models
+
+## Demo
+These are some examples of how models work:
+
+![User Interface](assets/front.png)
+
+![RF-model results](assets/rf.png)
+
+![YOLO results](assets/yolo.png)
+
+![ConvNeXt-model results](assets/convNext.png)
