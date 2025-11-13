@@ -1,2 +1,4 @@
 data/dataset
 dvc-storage
+__pycache__
+**/.DS_Store
