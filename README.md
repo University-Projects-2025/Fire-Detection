@@ -55,6 +55,13 @@ The project utilizes the D-Fire dataset, a comprehensive collection of over 21,0
 
 [Exploratory Data Analysis](https://github.com/University-Projects-2025/Fire-Detection/blob/main/data/eda.ipynb)
 
+## Training Models
+Each model's training/experiments related code can be found on other branches:
+
+- **cv_testing** for Texture-Analysis-based Random Forest classifier
+- **dev_ML** for ConvNeXt-based Dual-Head neural network
+- **yolo_test** for YOLOv11 object detection model
+
 ## Getting Started
 To set up and run the project locally:
 
