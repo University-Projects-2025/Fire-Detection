@@ -1,2 +1,4 @@
 data/dataset
 dvc-storage
+data/dataset-split
+model/data
