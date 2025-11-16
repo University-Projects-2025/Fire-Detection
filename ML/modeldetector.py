@@ -73,9 +73,14 @@ class FireSmokeDataset(Dataset):
 class LayerNorm(nn.Module):
     """Custom Layer Normalization implementation"""
     def __init__(self, normalized_shape, eps=1e-6):
+        """
+        Args:
+            normalized_shape: Shape of the normalized dimension
+            eps: Small value to avoid division by zero
+        """
         super().__init__()
-        self.weight = nn.Parameter(torch.ones(normalized_shape))
-        self.bias = nn.Parameter(torch.zeros(normalized_shape))
+        self.weight = nn.Parameter(torch.ones(normalized_shape))  # Learnable scale parameter
+        self.bias = nn.Parameter(torch.zeros(normalized_shape))   # Learnable shift parameter
         self.eps = eps
         self.normalized_shape = (normalized_shape,)
 
@@ -90,46 +95,55 @@ class LayerNorm(nn.Module):
 class Block(nn.Module):
     """Basic building block of the neural network architecture"""
     def __init__(self, dim):
+        """
+        Args:
+            dim: Dimension of input features
+        """
         super().__init__()
-        # Depthwise convolution
+        # Depthwise convolution - processes each channel separately
         self.dwconv = nn.Conv2d(dim, dim, kernel_size=7, padding=3, groups=dim)
         self.norm = LayerNorm(dim, eps=1e-6)
         # Pointwise convolutions for channel mixing
-        self.pwconv1 = nn.Linear(dim, 4 * dim)  # Expand channels
+        self.pwconv1 = nn.Linear(dim, 4 * dim)  # Expand channels by 4x
         self.act = nn.GELU()  # Activation function
-        self.pwconv2 = nn.Linear(4 * dim, dim)  # Compress channels
-        self.gamma = nn.Parameter(torch.ones((dim,)) * 1e-6)  # Residual scaling
+        self.pwconv2 = nn.Linear(4 * dim, dim)  # Compress channels back to original
+        self.gamma = nn.Parameter(torch.ones((dim,)) * 1e-6)  # Residual scaling parameter
 
     def forward(self, x):
         """Forward pass with residual connection"""
         input = x  # Save input for residual connection
         x = self.dwconv(x)
-        # Change dimension order for layer norm
+        # Change dimension order for layer norm (B,C,H,W) -> (B,H,W,C)
         x = x.permute(0, 2, 3, 1)
         x = self.norm(x)
         # Channel mixing with expansion and compression
         x = self.pwconv1(x)
         x = self.act(x)
         x = self.pwconv2(x)
-        x = self.gamma * x  # Scale residual
-        # Restore dimension order
+        x = self.gamma * x  # Scale residual connection
+        # Restore dimension order (B,H,W,C) -> (B,C,H,W)
         x = x.permute(0, 3, 1, 2)
         return input + x  # Residual connection
 
 class FireSmokeDetectorDualHead(nn.Module):
     """Dual-head neural network for fire/smoke classification and bounding box detection"""
     def __init__(self, num_classes=3, dropout_rate=0.3):
+        """
+        Args:
+            num_classes: Number of output classes (smoke, fire, no_fire)
+            dropout_rate: Dropout probability for regularization
+        """
         super().__init__()
-        # Feature dimensions at each stage
+        # Feature dimensions at each stage of the network
         dims = [96, 192, 384, 768]
         # Number of blocks at each stage
         depths = [3, 3, 9, 3]
         
-        # Initial feature extraction
+        # Initial feature extraction - patch embedding
         self.stem = nn.Conv2d(3, dims[0], kernel_size=4, stride=4)
         self.stem_norm = LayerNorm(dims[0], eps=1e-6)
         
-        # Four stages of processing with downsampling
+        # Four stages of processing with downsampling between stages
         self.stage1 = nn.Sequential(*[Block(dim=dims[0]) for _ in range(depths[0])])
         self.downsample1 = nn.Sequential(
             LayerNorm(dims[0], eps=1e-6),
@@ -150,27 +164,27 @@ class FireSmokeDetectorDualHead(nn.Module):
         
         self.stage4 = nn.Sequential(*[Block(dim=dims[3]) for _ in range(depths[3])])
         
-        # Global feature processing
+        # Global feature processing for classification
         self.norm = nn.LayerNorm(dims[-1], eps=1e-6)
         
-        # Classification head for fire/smoke/no_fire
+        # Classification head for fire/smoke/no_fire prediction
         self.classifier = nn.Sequential(
-            nn.Dropout(dropout_rate),
-            nn.Linear(dims[-1], 512),
-            nn.BatchNorm1d(512),
-            nn.GELU(),
-            nn.Dropout(dropout_rate * 0.7),  # Reduced dropout
-            nn.Linear(512, 256),
+            nn.Dropout(dropout_rate),  # Regularization
+            nn.Linear(dims[-1], 512),  # Feature projection
+            nn.BatchNorm1d(512),       # Batch normalization
+            nn.GELU(),                 # Activation
+            nn.Dropout(dropout_rate * 0.7),  # Reduced dropout in deeper layers
+            nn.Linear(512, 256),       # Further compression
             nn.BatchNorm1d(256),
             nn.GELU(),
-            nn.Linear(256, num_classes)
+            nn.Linear(256, num_classes)  # Final classification layer
         )
         
-        # Spatial attention for bounding box detection
+        # Spatial attention for focusing on relevant regions for bbox detection
         self.spatial_attention = nn.Sequential(
-            nn.Conv2d(dims[-1], 256, kernel_size=1),
+            nn.Conv2d(dims[-1], 256, kernel_size=1),  # Channel reduction
             nn.GELU(),
-            nn.Conv2d(256, 1, kernel_size=1),
+            nn.Conv2d(256, 1, kernel_size=1),         # Single channel attention map
             nn.Sigmoid()  # Attention weights between 0-1
         )
         
@@ -180,19 +194,44 @@ class FireSmokeDetectorDualHead(nn.Module):
             nn.GELU(),
             nn.Conv2d(256, 128, kernel_size=3, padding=1),
             nn.GELU(),
-            nn.AdaptiveAvgPool2d((7, 7)),  # Fixed size features
-            nn.Flatten(),
-            nn.Linear(128 * 7 * 7, 512),
+            nn.AdaptiveAvgPool2d((7, 7)),  # Fixed size features for FC layers
+            nn.Flatten(),                   # Convert to 1D vector
+            nn.Linear(128 * 7 * 7, 512),   # Fully connected layer
             nn.GELU(),
             nn.Linear(512, 4)  # Output: [x_center, y_center, width, height]
         )
         
-        self.sigmoid = nn.Sigmoid()  # For bounding box normalization
+        self.sigmoid = nn.Sigmoid()  # For bounding box coordinate normalization to [0,1]
 
-    def forward(self, x):
-        """Forward pass through the entire network"""
-        # Feature extraction backbone
-        features = self.stem(x)
+    def _compute_bbox(self, features):
+        """
+        Compute bounding boxes only for the provided features
+        
+        Args:
+            features: Input feature tensor
+            
+        Returns:
+            torch.Tensor: Predicted bounding boxes in normalized coordinates
+        """
+        attention_weights = self.spatial_attention(features)  # Compute attention map
+        attended_features = features * attention_weights      # Apply attention
+        bbox_predictions = self.bbox_head(attended_features)  # Predict bbox coordinates
+        return self.sigmoid(bbox_predictions)                 # Normalize to [0,1]
+
+    def forward(self, x, targets=None):
+        """
+        Forward pass through the entire network
+        
+        Args:
+            x: Input tensor of shape (B, 3, H, W)
+            targets: Ground truth labels (required during training)
+            
+        Returns:
+            tuple: (classification_logits, bbox_predictions, detection_mask)
+        """
+        # Feature extraction backbone (always executed)
+        features = self.stem(x)  # Initial patch embedding
+        # Apply layer norm with dimension permutation
         features = self.stem_norm(features.permute(0, 2, 3, 1)).permute(0, 3, 1, 2)
         
         # Process through four stages with downsampling
@@ -210,32 +249,43 @@ class FireSmokeDetectorDualHead(nn.Module):
         
         features = self.stage4(features)
         
-        # Classification head
+        # Classification head (always executed)
         global_features = features.mean([-2, -1])  # Global average pooling
         global_features = self.norm(global_features)
         classification_logits = self.classifier(global_features)
         classification_probs = F.softmax(classification_logits, dim=1)
         
-        # Determine which samples need bounding boxes
-        predicted_classes = torch.argmax(classification_probs, dim=1)
-        detection_mask = (predicted_classes == 0) | (predicted_classes == 1)  # smoke or fire
+        # Bounding box - CONDITIONAL execution for efficiency
+        batch_size = x.size(0)
+        device = x.device
+        # Initialize with zeros - will be filled conditionally
+        bbox_predictions = torch.zeros(batch_size, 4, device=device)
+        detection_mask = torch.zeros(batch_size, dtype=torch.bool, device=device)
         
-        # Bounding box head (only for detected fire/smoke during inference)
-        if self.training or detection_mask.any():
-            # Apply spatial attention to focus on relevant regions
-            attention_weights = self.spatial_attention(features)
-            attended_features = features * attention_weights
+        if self.training:
+            # During training - ALWAYS compute bbox for fire/smoke classes
+            if targets is None:
+                raise ValueError("Targets must be provided during training")
             
-            bbox_predictions = self.bbox_head(attended_features)
-            bbox_predictions = self.sigmoid(bbox_predictions)  # Normalize to [0,1]
+            # Create mask for fire (class 1) and smoke (class 0) samples
+            train_detection_mask = (targets == 0) | (targets == 1)
+            detection_mask = train_detection_mask
             
-            # During inference, zero bbox predictions for non-detections
-            if not self.training:
-                bbox_predictions = bbox_predictions * detection_mask.unsqueeze(1).float()
+            if train_detection_mask.any():
+                # Compute bbox ONLY for fire/smoke samples
+                features_for_bbox = features[train_detection_mask]
+                bbox_for_detections = self._compute_bbox(features_for_bbox)
+                bbox_predictions[train_detection_mask] = bbox_for_detections
         else:
-            # No detection - return zero bboxes
-            batch_size = x.size(0)
-            bbox_predictions = torch.zeros(batch_size, 4, device=x.device)
+            # During inference - compute ONLY for predicted fire/smoke
+            predicted_classes = torch.argmax(classification_probs, dim=1)
+            detection_mask = (predicted_classes == 0) | (predicted_classes == 1)
+            
+            if detection_mask.any():
+                # Compute bbox ONLY for detected fire/smoke samples
+                features_for_bbox = features[detection_mask]
+                bbox_for_detections = self._compute_bbox(features_for_bbox)
+                bbox_predictions[detection_mask] = bbox_for_detections
         
         return classification_logits, bbox_predictions, detection_mask
 
@@ -256,7 +306,7 @@ def dual_head_loss(classification_logits, bbox_predictions, targets, bbox_target
     Returns:
         tuple: (total_loss, classification_loss, bbox_loss)
     """
-    # Classification loss (always computed)
+    # Classification loss (always computed for all samples)
     cls_loss = F.cross_entropy(classification_logits, targets)
     
     # Bounding box loss (only for fire/smoke samples with valid bboxes)
@@ -266,7 +316,7 @@ def dual_head_loss(classification_logits, bbox_predictions, targets, bbox_target
     train_detection_mask = (targets == 0) | (targets == 1)
     
     if train_detection_mask.any():
-        # Smooth L1 loss for bounding box regression
+        # Smooth L1 loss for bounding box regression (less sensitive to outliers than L2)
         bbox_loss = F.smooth_l1_loss(
             bbox_predictions[train_detection_mask], 
             bbox_targets[train_detection_mask]
@@ -340,11 +390,11 @@ def train_dual_head(
                 labels = labels.to(device)
                 bbox_targets = bbox_targets.to(device)
                 
-                # Zero gradients
+                # Zero gradients from previous iteration
                 optimizer.zero_grad()
                 
-                # Forward pass
-                classification_logits, bbox_predictions, detection_mask = model(inputs)
+                # Forward pass with targets for training
+                classification_logits, bbox_predictions, detection_mask = model(inputs, targets=labels)
                 
                 # Compute loss
                 total_loss, cls_loss, bbox_loss = loss_fn(
@@ -360,14 +410,13 @@ def train_dual_head(
                 # Backward pass and optimization
                 total_loss.backward()
                 optimizer.step()
-                scheduler.step()  # Learning rate scheduling
                 
                 # Accumulate losses for logging
                 total_train_loss += total_loss.item()
                 total_cls_loss += cls_loss.item()
                 total_bbox_loss += bbox_loss.item() if bbox_loss > 0 else 0.0
                 
-                # Update progress bar
+                # Update progress bar with current losses
                 train_loop.set_postfix({
                     "total_loss": total_loss.item(),
                     "cls_loss": cls_loss.item(),
@@ -390,7 +439,7 @@ def train_dual_head(
                     labels = labels.to(device)
                     bbox_targets = bbox_targets.to(device)
                     
-                    # Model predictions
+                    # Model predictions (without targets for inference)
                     classification_logits, bbox_predictions, detection_mask = model(inputs)
                     
                     # Calculate accuracy
@@ -404,7 +453,7 @@ def train_dual_head(
                     )
                     val_loss += total_loss.item()
                     
-                    # Store predictions for metrics
+                    # Store predictions for metrics calculation
                     all_preds.extend(predicted.cpu().numpy())
                     all_labels.extend(labels.cpu().numpy())
                     
@@ -510,7 +559,7 @@ if __name__ == "__main__":
     # Image preprocessing transformations
     transform = transforms.Compose([
         transforms.Resize((224, 224)),  # Resize to model input size
-        transforms.ToTensor(),  # Convert to tensor
+        transforms.ToTensor(),          # Convert to tensor
         transforms.Normalize(mean=[0.485, 0.456, 0.406],  # ImageNet normalization
                              std=[0.229, 0.224, 0.225])
     ])
@@ -554,24 +603,17 @@ if __name__ == "__main__":
     val_loader = DataLoader(val_dataset, batch_size=16, shuffle=False, num_workers=4)
     test_loader = DataLoader(test_dataset, batch_size=16, shuffle=False, num_workers=4)
     
-    # Model setup
+    # Model setup with new architecture
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    model = FireSmokeDetectorDualHead(
-        num_classes=3, 
-        dropout_rate=0.3
-    )
+    model = FireSmokeDetectorDualHead(num_classes=3, dropout_rate=0.3)
     
     # Optimizer with L2 regularization
-    optimizer = torch.optim.AdamW(
-        model.parameters(), 
-        lr=1e-4, 
-        weight_decay=1e-4
-    )
+    optimizer = torch.optim.AdamW(model.parameters(), lr=1e-4, weight_decay=1e-4)
     
     # Learning rate scheduler
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=5)
     
-    # Start training
+    # Start training with new architecture
     train_dual_head(
         model=model,
         optimizer=optimizer,
@@ -579,7 +621,125 @@ if __name__ == "__main__":
         train_loader=train_loader,
         val_loader=val_loader,
         device=device,
-        epochs=5,
-        ckpt_path="best_dual_head.pt",
-        experiment_name="fire_smoke_dual_head"
+        epochs=15,
+        ckpt_path="best_dual_head_v2.pt",  # New filename for version 2
+        experiment_name="fire_smoke_dual_head_v2"  # New experiment name
     )
+
+
+def create_final_confusion_matrix(model_path="best_dual_head_v2.pt", 
+                                splits_file="dataset_splits.pkl",
+                                experiment_name="confusion_matrix_final"):
+    """
+    Creates and logs confusion matrix for saved model
+    
+    Args:
+        model_path: Path to saved model weights
+        splits_file: Path to dataset splits file
+        experiment_name: MLflow experiment name
+        
+    Returns:
+        tuple: (confusion_matrix, true_labels, predictions)
+    """
+    # Load model
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    model = FireSmokeDetectorDualHead(num_classes=3, dropout_rate=0.3)
+    model.load_state_dict(torch.load(model_path, map_location=device))
+    model.to(device)
+    model.eval()
+    
+    # Load data
+    split_data = load_dataset_splits(splits_file)
+    if not split_data:
+        print("Split file not found!")
+        return
+    
+    test_df = split_data['test_df']
+    img_dir = split_data['img_dir']
+    
+    # Transformations (same as during training)
+    transform = transforms.Compose([
+        transforms.Resize((224, 224)),  # Resize to model input size
+        transforms.ToTensor(),          # Convert to tensor
+        transforms.Normalize(mean=[0.485, 0.456, 0.406],  # ImageNet normalization
+                             std=[0.229, 0.224, 0.225])
+    ])
+    
+    # Test dataset and loader
+    test_dataset = FireSmokeDataset(test_df, img_dir, transform=transform)
+    test_loader = DataLoader(test_dataset, batch_size=16, shuffle=False, num_workers=4)
+    
+    # Collect predictions
+    all_preds = []
+    all_labels = []
+    
+    with torch.no_grad():
+        for inputs, labels, bbox_targets in tqdm(test_loader, desc="Creating Confusion Matrix"):
+            inputs = inputs.to(device)
+            labels = labels.to(device)
+            
+            classification_logits, bbox_predictions, detection_mask = model(inputs)
+            _, predicted = torch.max(classification_logits, 1)
+            
+            all_preds.extend(predicted.cpu().numpy())
+            all_labels.extend(labels.cpu().numpy())
+    
+    # Create confusion matrix
+    cm = confusion_matrix(all_labels, all_preds)
+    class_names = ['Fire', 'Smoke', 'No Fire/Smoke']
+    
+    # Visualization
+    plt.figure(figsize=(10, 8))
+    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', 
+                xticklabels=class_names, 
+                yticklabels=class_names,
+                cbar_kws={'label': 'Number of Samples'})
+    
+    plt.title('Confusion Matrix - Final Model on Test Set', fontsize=16, pad=20)
+    plt.xlabel('Predicted Label', fontsize=12)
+    plt.ylabel('True Label', fontsize=12)
+    plt.tight_layout()
+    
+    # Logging to MLflow
+    mlflow.set_experiment(experiment_name)
+    
+    with mlflow.start_run(run_name="final_confusion_matrix"):
+        # Log the confusion matrix figure
+        mlflow.log_figure(plt.gcf(), "confusion_matrix_final.png")
+        
+        # Log additional metrics
+        from sklearn.metrics import classification_report, accuracy_score
+        
+        accuracy = accuracy_score(all_labels, all_preds)
+        mlflow.log_metric("test_accuracy", accuracy)
+        
+        # Log the matrix itself as artifact
+        np.save("confusion_matrix.npy", cm)
+        mlflow.log_artifact("confusion_matrix.npy")
+        
+        # Classification report
+        report = classification_report(all_labels, all_preds, target_names=class_names, output_dict=True)
+        import json
+        with open("classification_report.json", "w") as f:
+            json.dump(report, f, indent=2)
+        mlflow.log_artifact("classification_report.json")
+    
+    plt.show()
+    
+    print(f"Confusion Matrix created and saved to MLflow!")
+    print(f"Test set accuracy: {accuracy:.4f}")
+    print("Confusion Matrix:")
+    print(cm)
+    
+    return cm, all_labels, all_preds
+
+# Run after training completion
+if __name__ == "__main__":
+    # Your existing training code...
+    
+    # After training add:
+    print("\n" + "="*50)
+    print("Creating Confusion Matrix for trained model...")
+    print("="*50)
+    
+    cm, true_labels, predictions = create_final_confusion_matrix()
