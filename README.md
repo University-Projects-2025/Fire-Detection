@@ -22,13 +22,7 @@ This project aims to develop an automatic detection system for identifying fire 
 │   └── 📈 eda.ipynb                                  # Exploratory Data Analysis with visualizations
 │   └── 🔗 dataset.dvc                                # DVC pointer for dataset version tracking
 │
-├── 📁 miruns/                                         # ⚡ Additional Model Runs & Configs
-│   └── 📋 .dvcignore                                 # DVC ignore rules for model runs
-│   └── ⚙️ .gitattributes                             # Git attributes configuration
-│   └── 📄 LICENSE                                    # MIT License file
-│   └── 📖 README.md                                  # Main project documentation
-│   └── 🗂️ dataset_splits.pkl                        # Serialized train/val/test splits for reproducibility
-│
+├── 📁 miruns                                          # Data configs
 ├── 🔒 .dvcignore                                      # Global DVC ignore rules
 ├── 🔒 .gitignore                                      # Global Git ignore rules  
 ├── 📄 LICENSE                                         # MIT License file
